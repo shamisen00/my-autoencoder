@@ -19,34 +19,22 @@ FROM nvcr.io/nvidia/pytorch:${PYTORCH_VERSION}-py3
 
 LABEL maintainer="PyTorchLightning <https://github.com/PyTorchLightning>"
 
-ARG LIGHTNING_VERSION=""
 
 RUN python -c "import torch ; print(torch.__version__)" >> torch_version.info
 
-COPY ./ /workspace/pytorch-lightning/
+COPY ./ /workspace
 
 RUN \
     cd /workspace  && \
-    # replace by specific version if asked
-    if [ ! -z "$LIGHTNING_VERSION" ] ; then \
-        rm -rf pytorch-lightning ; \
-        git clone https://github.com/PyTorchLightning/pytorch-lightning.git ; \
-        cd pytorch-lightning ; \
-        git checkout ${LIGHTNING_VERSION} ; \
-        git submodule update --init --recursive ; \
-        cd .. ; \
-    fi && \
-# save the examples
-    mv pytorch-lightning/_notebooks notebooks && \
+    #実行に使うファイル
     mv pytorch-lightning/pl_examples . && \
 
 # Installations
-    python ./pytorch-lightning/.github/prune-packages.py ./pytorch-lightning/requirements/extra.txt "horovod" && \
     pip install "Pillow>=8.2, !=8.3.0" "cryptography>=3.4" "py>=1.10" --no-cache-dir --upgrade-strategy only-if-needed && \
-    pip install -r ./pytorch-lightning/requirements/extra.txt --no-cache-dir --upgrade-strategy only-if-needed && \
-    pip install -r ./pytorch-lightning/requirements/examples.txt --no-cache-dir --upgrade-strategy only-if-needed && \
+    pip install -r ./requirements/extra.txt --no-cache-dir --upgrade-strategy only-if-needed && \
+    pip install -r ./requirements/examples.txt --no-cache-dir --upgrade-strategy only-if-needed && \
+    # setup.py
     pip install ./pytorch-lightning --no-cache-dir && \
-    rm -rf pytorch-lightning && \
     pip install jupyterlab[all] -U && \
     pip list
 
