@@ -25,31 +25,22 @@ RUN python -c "import torch ; print(torch.__version__)" >> torch_version.info
 COPY ./ /workspace
 
 RUN \
-    cd /workspace  && \
-    #実行に使うファイル
-    mv pytorch-lightning/pl_examples . && \
-
-# Installations
+    cd /workspace && \
+# Installationn
     pip install "Pillow>=8.2, !=8.3.0" "cryptography>=3.4" "py>=1.10" --no-cache-dir --upgrade-strategy only-if-needed && \
     pip install -r ./requirements/extra.txt --no-cache-dir --upgrade-strategy only-if-needed && \
-    pip install -r ./requirements/examples.txt --no-cache-dir --upgrade-strategy only-if-needed && \
-    # setup.py
-    pip install ./pytorch-lightning --no-cache-dir && \
+    pip install -r ./requirements/example.txt --no-cache-dir --upgrade-strategy only-if-needed &&\
     pip install jupyterlab[all] -U && \
     pip list
 
-RUN pip install lightning-grid -U && \
-    pip install "py>=1.10" "protobuf>=3.15.6" --upgrade-strategy only-if-needed
+    RUN pip install lightning-grid -U && \
+        pip install "py>=1.10" "protobuf>=3.15.6" --upgrade-strategy only-if-needed
 
-ENV PYTHONPATH="/workspace"
+    ENV PYTHONPATH="/workspace"
 
-RUN \
-    TORCH_VERSION=$(cat torch_version.info) && \
-    rm torch_version.info && \
-    python --version && \
-    pip --version && \
-    pip list | grep torch && \
-    python -c "import torch; assert torch.__version__.startswith('$TORCH_VERSION'), torch.__version__" && \
-    python -c "import pytorch_lightning as pl; print(pl.__version__)"
+    RUN \
+        python --version && \
+        pip --version && \
+        pip list | grep torch
 
-CMD ["jupyter", "notebook", "--port=8888", "--no-browser", "--ip=0.0.0.0", "--allow-root"]
+    CMD ["jupyter", "notebook", "--port=8888", "--no-browser", "--ip=0.0.0.0", "--allow-root"]
