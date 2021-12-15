@@ -13,7 +13,7 @@
 # limitations under the License.
 """MNIST autoencoder example.
 
-To run: python autoencoder.py --trainer.max_epochs=50
+To run: python autoencoder.py
 """
 from typing import Optional, Tuple
 
@@ -23,16 +23,14 @@ from torch import nn
 from torch.utils.data import DataLoader, random_split
 
 import pytorch_lightning as pl
-from pl_examples import _DATASETS_PATH
-from pl_examples.basic_examples.mnist_datamodule import MNIST
-from pytorch_lightning.utilities import rank_zero_only
-from pytorch_lightning.utilities.cli import LightningCLI
-from pytorch_lightning.utilities.imports import _TORCHVISION_AVAILABLE
+from utillities import rank_zero_only
+import torchvision
+from torchvision.datasets import MNIST
+from torchvision import transforms
+from torchvision.utils import save_image
 
-if _TORCHVISION_AVAILABLE:
-    import torchvision
-    from torchvision import transforms
-    from torchvision.utils import save_image
+from pytorch_lightning import Trainer
+from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 
 
 class ImageSampler(pl.callbacks.Callback):
@@ -61,8 +59,6 @@ class ImageSampler(pl.callbacks.Callback):
                 images separately rather than the (min, max) over all images. Default: ``False``.
             pad_value: Value for the padded pixels. Default: ``0``.
         """
-        if not _TORCHVISION_AVAILABLE:  # pragma: no cover
-            raise ModuleNotFoundError("You want to use `torchvision` which is not installed yet.")
 
         super().__init__()
         self.num_samples = num_samples
@@ -86,8 +82,6 @@ class ImageSampler(pl.callbacks.Callback):
 
     @rank_zero_only
     def on_epoch_end(self, trainer: pl.Trainer, pl_module: pl.LightningModule) -> None:
-        if not _TORCHVISION_AVAILABLE:
-            return
 
         images, _ = next(iter(DataLoader(trainer.datamodule.mnist_val, batch_size=self.num_samples)))
         images_flattened = images.view(images.size(0), -1)
@@ -104,14 +98,6 @@ class ImageSampler(pl.callbacks.Callback):
 
 
 class LitAutoEncoder(pl.LightningModule):
-    """
-    >>> LitAutoEncoder()  # doctest: +ELLIPSIS +NORMALIZE_WHITESPACE
-    LitAutoEncoder(
-      (encoder): ...
-      (decoder): ...
-    )
-    """
-
     def __init__(self, hidden_dim: int = 64):
         super().__init__()
         self.encoder = nn.Sequential(nn.Linear(28 * 28, hidden_dim), nn.ReLU(), nn.Linear(hidden_dim, 3))
@@ -151,40 +137,36 @@ class LitAutoEncoder(pl.LightningModule):
 
 
 class MyDataModule(pl.LightningDataModule):
-    def __init__(self, batch_size: int = 32):
+    def __init__(self, batch_size: int = 32, data_dir: str = "./"):
         super().__init__()
-        dataset = MNIST(_DATASETS_PATH, train=True, download=True, transform=transforms.ToTensor())
-        self.mnist_test = MNIST(_DATASETS_PATH, train=False, download=True, transform=transforms.ToTensor())
+        dataset = MNIST(data_dir, train=True, download=True, transform=transforms.ToTensor())
+        self.mnist_test = MNIST(data_dir, train=False, download=True, transform=transforms.ToTensor())
         self.mnist_train, self.mnist_val = random_split(dataset, [55000, 5000])
         self.batch_size = batch_size
 
     def train_dataloader(self):
-        return DataLoader(self.mnist_train, batch_size=self.batch_size)
+        return DataLoader(self.mnist_train, batch_size=self.batch_size, num_workers=4)
 
     def val_dataloader(self):
-        return DataLoader(self.mnist_val, batch_size=self.batch_size)
+        return DataLoader(self.mnist_val, batch_size=self.batch_size, num_workers=4)
 
     def test_dataloader(self):
-        return DataLoader(self.mnist_test, batch_size=self.batch_size)
+        return DataLoader(self.mnist_test, batch_size=self.batch_size, num_workers=4)
 
     def predict_dataloader(self):
-        return DataLoader(self.mnist_test, batch_size=self.batch_size)
+        return DataLoader(self.mnist_test, batch_size=self.batch_size, num_workers=4)
 
 
-def cli_main():
-    cli = LightningCLI(
-        LitAutoEncoder,
-        MyDataModule,
-        seed_everything_default=1234,
-        save_config_overwrite=True,
-        run=False,  # used to de-activate automatic fitting.
-        trainer_defaults={"callbacks": ImageSampler(), "max_epochs": 10},
-    )
-    cli.trainer.fit(cli.model, datamodule=cli.datamodule)
-    cli.trainer.test(ckpt_path="best", datamodule=cli.datamodule)
-    predictions = cli.trainer.predict(ckpt_path="best", datamodule=cli.datamodule)
-    print(predictions[0])
+def main():
+    #early_stop_callback = EarlyStopping(monitor="val_acc", min_delta=0.001, patience=3, mode="max")
+    trainer = Trainer(gpus=1, max_epochs=10)
+
+    mnist = MyDataModule(data_dir="./data")
+    model = LitAutoEncoder()
+
+    trainer.fit(model, mnist)
+    trainer.test(model, mnist)
 
 
 if __name__ == "__main__":
-    cli_main()
+    main()
