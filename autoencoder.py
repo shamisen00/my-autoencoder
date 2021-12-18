@@ -158,8 +158,8 @@ class MyDataModule(pl.LightningDataModule):
 
 
 def main():
-    #early_stop_callback = EarlyStopping(monitor="val_acc", min_delta=0.001, patience=3, mode="max")
-    trainer = Trainer(gpus=1, max_epochs=10)
+    early_stop_callback = EarlyStopping(monitor="val_loss", min_delta=0.001, patience=3, mode="max")
+    trainer = Trainer(gpus=1, max_epochs=3, callbacks=[early_stop_callback])
 
     mnist = MyDataModule(data_dir="./data")
     model = LitAutoEncoder()
