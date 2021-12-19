@@ -1,9 +1,18 @@
 # my-autoencoder
 
-### under construction
+## under construction
+---
+### **for development enviroment**
 
-~~docker build -t "imagename" .~~
+just open the container in vscode and 
+```
+python autoencoder.py
+```
 
-~~docker run --ipc=host --gpus all -it --name "containername" "imagename" bash~~
+---
+### **for production enviroment**
+docker build -t "imagename" .
 
-~~python autoencoder.py --trainer.gpus=1~~
+docker run --ipc=host --gpus all -it --name "containername" "imagename" bash
+
+python autoencoder.py
