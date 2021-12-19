@@ -1,6 +1,9 @@
-#directory
+# directory
 data/
-lightning_logs
+lightning_logs/
+
+# file 
+*.json/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
