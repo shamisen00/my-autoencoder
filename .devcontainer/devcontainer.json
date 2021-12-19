@@ -3,18 +3,18 @@
 {
 	"name": "autoencoder development",
 	"build": {
-		"dockerfile": "../Dockerfile"
+		"dockerfile": "Dockerfile",
+		"context": ".."
 	},
-
 	"workspaceFolder": "/workspace",
     "workspaceMount": "type=bind,source=${localWorkspaceFolder},target=/workspace",
 
-	// Add the IDs of extensions you want installed when the container is created.
 	"extensions": [
 		"ms-python.python",
 		"eamodio.gitlens",
 	],
 
 	// Comment out connect as root instead. More info: https://aka.ms/vscode-remote/containers/non-root.
+	"runArgs": ["--gpus", "all"],
 	// "remoteUser": "dev-user"
 }
