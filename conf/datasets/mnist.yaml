@@ -1,0 +1,3 @@
+MNIST:
+  _target_: datamodules.mymnist.MyMNIST
+  data_dir: "./data"

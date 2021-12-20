@@ -1,3 +1,6 @@
 gpus: 1
 defaults:
   - setting: condition1
+  - model: autoencoder
+  - callbacks: callbacks
+  - datasets: mnist
