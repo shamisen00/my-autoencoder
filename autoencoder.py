@@ -22,17 +22,11 @@ import pytorch_lightning as pl
 import torchvision
 from torchvision.utils import save_image
 from torch.utils.data import DataLoader
-
 from pytorch_lightning import Trainer
-from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 
 import hydra
 from omegaconf import DictConfig, OmegaConf
 from hydra.utils import instantiate
-
-from models.lite_autoencoder import LitAutoEncoder
-from datamodules.mymnist import MyMNIST
-
 
 class ImageSampler(pl.callbacks.Callback):
     def __init__(
