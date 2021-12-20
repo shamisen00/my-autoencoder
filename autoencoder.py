@@ -18,22 +18,20 @@ To run: python autoencoder.py
 from typing import Optional, Tuple
 
 import torch
-import torch.nn.functional as F
-from torch import nn
-from torch.utils.data import DataLoader, random_split
-
 import pytorch_lightning as pl
 import torchvision
-from torchvision.datasets import MNIST
-from torchvision import transforms
 from torchvision.utils import save_image
+from torch.utils.data import DataLoader
 
 from pytorch_lightning import Trainer
 from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 
 import hydra
 from omegaconf import DictConfig, OmegaConf
+from hydra.utils import instantiate
 
+from models.lite_autoencoder import LitAutoEncoder
+from datamodules.mymnist import MyMNIST
 
 
 class ImageSampler(pl.callbacks.Callback):
@@ -98,75 +96,17 @@ class ImageSampler(pl.callbacks.Callback):
             save_image(self._to_grid(images), f"grid_ori_{trainer.current_epoch}.png")
         save_image(self._to_grid(images_generated.reshape(images.shape)), f"grid_generated_{trainer.current_epoch}.png")
 
-
-class LitAutoEncoder(pl.LightningModule):
-    def __init__(self, hidden_dim: int = 64):
-        super().__init__()
-        self.encoder = nn.Sequential(nn.Linear(28 * 28, hidden_dim), nn.ReLU(), nn.Linear(hidden_dim, 256))
-        self.decoder = nn.Sequential(nn.Linear(256, hidden_dim), nn.ReLU(), nn.Linear(hidden_dim, 28 * 28))
-
-    def forward(self, x):
-        z = self.encoder(x)
-        x_hat = self.decoder(z)
-        return x_hat
-
-    def training_step(self, batch, batch_idx):
-        return self._common_step(batch, batch_idx, "train")
-
-    def validation_step(self, batch, batch_idx):
-        self._common_step(batch, batch_idx, "val")
-
-    def test_step(self, batch, batch_idx):
-        self._common_step(batch, batch_idx, "test")
-
-    def predict_step(self, batch, batch_idx, dataloader_idx=None):
-        x = self._prepare_batch(batch)
-        return self(x)
-
-    def configure_optimizers(self):
-        optimizer = torch.optim.Adam(self.parameters(), lr=1e-3)
-        return optimizer
-
-    def _prepare_batch(self, batch):
-        x, _ = batch
-        return x.view(x.size(0), -1)
-
-    def _common_step(self, batch, batch_idx, stage: str):
-        x = self._prepare_batch(batch)
-        loss = F.mse_loss(x, self(x))
-        self.log(f"{stage}_loss", loss, on_step=True)
-        return loss
-
-
-class MyDataModule(pl.LightningDataModule):
-    def __init__(self, batch_size: int = 32, data_dir: str = "./"):
-        super().__init__()
-        dataset = MNIST(data_dir, train=True, download=True, transform=transforms.ToTensor())
-        self.mnist_test = MNIST(data_dir, train=False, download=True, transform=transforms.ToTensor())
-        self.mnist_train, self.mnist_val = random_split(dataset, [55000, 5000])
-        self.batch_size = batch_size
-
-    def train_dataloader(self):
-        return DataLoader(self.mnist_train, batch_size=self.batch_size, num_workers=4)
-
-    def val_dataloader(self):
-        return DataLoader(self.mnist_val, batch_size=self.batch_size, num_workers=4)
-
-    def test_dataloader(self):
-        return DataLoader(self.mnist_test, batch_size=self.batch_size, num_workers=4)
-
-    def predict_dataloader(self):
-        return DataLoader(self.mnist_test, batch_size=self.batch_size, num_workers=4)
-
 @hydra.main(config_path="conf", config_name="config")
 def main(cfg : DictConfig):
     print(OmegaConf.to_yaml(cfg))
+    print(cfg.setting)
+    print(cfg.datasets)
 
-    early_stop_callback = EarlyStopping(monitor="val_loss", min_delta=0.001, patience=5, mode="max")
+    early_stop_callback = instantiate(cfg.callbacks.EarlyStopping)
     trainer = Trainer(gpus=cfg.setting.params.gpus, max_epochs=cfg.setting.params.max_epochs, callbacks=[early_stop_callback,ImageSampler()])
 
-    mnist = MyDataModule(data_dir="./data")
-    model = LitAutoEncoder()
+    mnist = instantiate(cfg.datasets.MNIST)
+    model = instantiate(cfg.model.lite_autoencoder)
 
     trainer.fit(model, mnist)
     trainer.test(model, mnist)

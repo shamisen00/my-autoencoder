@@ -1,0 +1,2 @@
+lite_autoencoder:
+  _target_: models.lite_autoencoder.LitAutoEncoder
