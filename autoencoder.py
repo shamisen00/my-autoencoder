@@ -31,6 +31,10 @@ from torchvision.utils import save_image
 from pytorch_lightning import Trainer
 from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 
+import hydra
+from omegaconf import DictConfig, OmegaConf
+
+
 
 class ImageSampler(pl.callbacks.Callback):
     def __init__(
@@ -91,8 +95,8 @@ class ImageSampler(pl.callbacks.Callback):
             pl_module.train()
 
         if trainer.current_epoch == 0:
-            save_image(self._to_grid(images), f"pictures/grid_ori_{trainer.current_epoch}.png")
-        save_image(self._to_grid(images_generated.reshape(images.shape)), f"pictures/grid_generated_{trainer.current_epoch}.png")
+            save_image(self._to_grid(images), f"grid_ori_{trainer.current_epoch}.png")
+        save_image(self._to_grid(images_generated.reshape(images.shape)), f"grid_generated_{trainer.current_epoch}.png")
 
 
 class LitAutoEncoder(pl.LightningModule):
@@ -154,10 +158,12 @@ class MyDataModule(pl.LightningDataModule):
     def predict_dataloader(self):
         return DataLoader(self.mnist_test, batch_size=self.batch_size, num_workers=4)
 
+@hydra.main(config_path="conf", config_name="config")
+def main(cfg : DictConfig):
+    print(OmegaConf.to_yaml(cfg))
 
-def main():
-    early_stop_callback = EarlyStopping(monitor="val_loss", min_delta=0.001, patience=3, mode="max")
-    trainer = Trainer(gpus=1, max_epochs=10, callbacks=[early_stop_callback,ImageSampler()])
+    early_stop_callback = EarlyStopping(monitor="val_loss", min_delta=0.001, patience=5, mode="max")
+    trainer = Trainer(gpus=cfg.setting.params.gpus, max_epochs=cfg.setting.params.max_epochs, callbacks=[early_stop_callback,ImageSampler()])
 
     mnist = MyDataModule(data_dir="./data")
     model = LitAutoEncoder()

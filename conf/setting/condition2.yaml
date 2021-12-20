@@ -1,0 +1,3 @@
+params:
+  gpus: 0
+  max_epochs: 3

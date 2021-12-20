@@ -6,7 +6,7 @@
 
 just open the container in vscode and 
 ```
-python autoencoder.py
+python autoencoder.py --multirun setting=condition1,condition2
 ```
 
 ---
@@ -15,4 +15,4 @@ docker build -t "imagename" .
 
 docker run --ipc=host --gpus all -it --name "containername" "imagename" bash
 
-python autoencoder.py
+python autoencoder.py --multirun setting=condition1,condition2
