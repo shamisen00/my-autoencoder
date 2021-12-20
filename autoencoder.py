@@ -169,7 +169,6 @@ def main(cfg : DictConfig):
     trainer = Trainer(gpus=cfg.setting.params.gpus, max_epochs=cfg.setting.params.max_epochs, \
         logger=mlf_logger, callbacks=[early_stop_callback,ImageSampler()])
 
-
     mnist = MyDataModule(data_dir="./data")
     model = LitAutoEncoder()
 
