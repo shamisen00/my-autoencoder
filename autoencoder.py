@@ -106,7 +106,7 @@ def main(cfg : DictConfig):
 
     trainer.fit(model, mnist)
     trainer.test(model, mnist)
-
+    
     wandb.finish()
 
 if __name__ == "__main__":
