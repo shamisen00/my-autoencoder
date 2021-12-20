@@ -27,6 +27,8 @@ from pytorch_lightning import Trainer
 import hydra
 from omegaconf import DictConfig, OmegaConf
 from hydra.utils import instantiate
+import wandb
+from pytorch_lightning.loggers import WandbLogger
 
 class ImageSampler(pl.callbacks.Callback):
     def __init__(
@@ -93,11 +95,11 @@ class ImageSampler(pl.callbacks.Callback):
 @hydra.main(config_path="conf", config_name="config")
 def main(cfg : DictConfig):
     print(OmegaConf.to_yaml(cfg))
-    print(cfg.setting)
-    print(cfg.datasets)
 
     early_stop_callback = instantiate(cfg.callbacks.EarlyStopping)
-    trainer = Trainer(gpus=cfg.setting.params.gpus, max_epochs=cfg.setting.params.max_epochs, callbacks=[early_stop_callback,ImageSampler()])
+    wandb_logger = WandbLogger(project="MNIST", log_model="all")
+    trainer = Trainer(gpus=cfg.setting.params.gpus, max_epochs=cfg.setting.params.max_epochs,\
+         callbacks=[early_stop_callback,ImageSampler()], logger=wandb_logger)
 
     mnist = instantiate(cfg.datasets.MNIST)
     model = instantiate(cfg.model.lite_autoencoder)
@@ -105,6 +107,7 @@ def main(cfg : DictConfig):
     trainer.fit(model, mnist)
     trainer.test(model, mnist)
 
+    wandb.finish()
 
 if __name__ == "__main__":
     main()
