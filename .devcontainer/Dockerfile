@@ -22,10 +22,10 @@ LABEL maintainer="PyTorchLightning <https://github.com/PyTorchLightning>"
 
 RUN python -c "import torch ; print(torch.__version__)" >> torch_version.info
 
-COPY ./ /workspace
+COPY . /workspace
 
 RUN \
-    cd /workspace && \
+     cd /workspace && \
 # Installationn
     pip install "Pillow>=8.2, !=8.3.0" "cryptography>=3.4" "py>=1.10" --no-cache-dir --upgrade-strategy only-if-needed && \
     pip install -r ./requirements/extra.txt --no-cache-dir --upgrade-strategy only-if-needed && \
@@ -38,9 +38,13 @@ RUN \
 
     ENV PYTHONPATH="/workspace"
 
-    RUN \
-        python --version && \
-        pip --version && \
-        pip list | grep torch
+RUN \
+    ls -a  && \
+    pip install -r ./requirements/example.txt --no-cache-dir --upgrade-strategy only-if-needed
+
+RUN \
+    python --version && \
+    pip --version && \
+    pip list | grep torch
 
     CMD ["jupyter", "notebook", "--port=8888", "--no-browser", "--ip=0.0.0.0", "--allow-root"]

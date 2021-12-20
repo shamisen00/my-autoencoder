@@ -23,7 +23,6 @@ from torch import nn
 from torch.utils.data import DataLoader, random_split
 
 import pytorch_lightning as pl
-from utillities import rank_zero_only
 import torchvision
 from torchvision.datasets import MNIST
 from torchvision import transforms
@@ -32,11 +31,15 @@ from torchvision.utils import save_image
 from pytorch_lightning import Trainer
 from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 
+import hydra
+from omegaconf import DictConfig, OmegaConf
+
+
 
 class ImageSampler(pl.callbacks.Callback):
     def __init__(
         self,
-        num_samples: int = 3,
+        num_samples: int = 16,
         nrow: int = 8,
         padding: int = 2,
         normalize: bool = True,
@@ -80,7 +83,6 @@ class ImageSampler(pl.callbacks.Callback):
             pad_value=self.pad_value,
         )
 
-    @rank_zero_only
     def on_epoch_end(self, trainer: pl.Trainer, pl_module: pl.LightningModule) -> None:
 
         images, _ = next(iter(DataLoader(trainer.datamodule.mnist_val, batch_size=self.num_samples)))
@@ -100,8 +102,8 @@ class ImageSampler(pl.callbacks.Callback):
 class LitAutoEncoder(pl.LightningModule):
     def __init__(self, hidden_dim: int = 64):
         super().__init__()
-        self.encoder = nn.Sequential(nn.Linear(28 * 28, hidden_dim), nn.ReLU(), nn.Linear(hidden_dim, 3))
-        self.decoder = nn.Sequential(nn.Linear(3, hidden_dim), nn.ReLU(), nn.Linear(hidden_dim, 28 * 28))
+        self.encoder = nn.Sequential(nn.Linear(28 * 28, hidden_dim), nn.ReLU(), nn.Linear(hidden_dim, 256))
+        self.decoder = nn.Sequential(nn.Linear(256, hidden_dim), nn.ReLU(), nn.Linear(hidden_dim, 28 * 28))
 
     def forward(self, x):
         z = self.encoder(x)
@@ -156,10 +158,12 @@ class MyDataModule(pl.LightningDataModule):
     def predict_dataloader(self):
         return DataLoader(self.mnist_test, batch_size=self.batch_size, num_workers=4)
 
+@hydra.main(config_path="conf", config_name="config")
+def main(cfg : DictConfig):
+    print(OmegaConf.to_yaml(cfg))
 
-def main():
-    early_stop_callback = EarlyStopping(monitor="val_loss", min_delta=0.001, patience=3, mode="max")
-    trainer = Trainer(gpus=1, max_epochs=3, callbacks=[early_stop_callback])
+    early_stop_callback = EarlyStopping(monitor="val_loss", min_delta=0.001, patience=5, mode="max")
+    trainer = Trainer(gpus=cfg.setting.params.gpus, max_epochs=cfg.setting.params.max_epochs, callbacks=[early_stop_callback,ImageSampler()])
 
     mnist = MyDataModule(data_dir="./data")
     model = LitAutoEncoder()
