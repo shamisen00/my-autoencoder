@@ -33,6 +33,8 @@ from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 
 import hydra
 from omegaconf import DictConfig, OmegaConf
+from pytorch_lightning.loggers import MLFlowLogger
+import mlflow
 
 
 
@@ -134,7 +136,7 @@ class LitAutoEncoder(pl.LightningModule):
     def _common_step(self, batch, batch_idx, stage: str):
         x = self._prepare_batch(batch)
         loss = F.mse_loss(x, self(x))
-        self.log(f"{stage}_loss", loss, on_step=True)
+        self.logger.experiment.log_metric(run_id="test", key=f"{stage}_loss", value=loss.cpu().numpy().copy().float64)
         return loss
 
 
@@ -162,8 +164,11 @@ class MyDataModule(pl.LightningDataModule):
 def main(cfg : DictConfig):
     print(OmegaConf.to_yaml(cfg))
 
+    mlf_logger = MLFlowLogger(experiment_name="default", tracking_uri="file:./ml-runs")
     early_stop_callback = EarlyStopping(monitor="val_loss", min_delta=0.001, patience=5, mode="max")
-    trainer = Trainer(gpus=cfg.setting.params.gpus, max_epochs=cfg.setting.params.max_epochs, callbacks=[early_stop_callback,ImageSampler()])
+    trainer = Trainer(gpus=cfg.setting.params.gpus, max_epochs=cfg.setting.params.max_epochs, \
+        logger=mlf_logger, callbacks=[early_stop_callback,ImageSampler()])
+
 
     mnist = MyDataModule(data_dir="./data")
     model = LitAutoEncoder()
